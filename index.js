@@ -1,7 +1,7 @@
 /**
- * Created by kidtronnix on 20/05/14.
+ * Created by Moksh Shah
  */
-var Boom = require('boom');
+var Boom = require('@hapi/boom');
 var Joi = require('joi');
 var MongoDB = require('mongodb').Db;
 var Server = require('mongodb').Server;
@@ -29,7 +29,7 @@ module.exports = function(config) {
         }
     };
 
-    config = Extend({},baseConfig,config);
+    config = Extend({}, baseConfig, config);
 
 
     // get db from config
@@ -44,14 +44,13 @@ module.exports = function(config) {
             // add access control
             // We need to stop create if not allowed, only if:
             // route is authenticated, we are not admin, and we protect create
-            if(request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && request.auth.credentials.access !== config.create.access) {
+            if (request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && request.auth.credentials.access !== config.create.access) {
                 var error = Boom.unauthorized('You do not have create access');
                 return reply(error);
-            }
-            else {
+            } else {
                 var validSchema = config.create.payload;
 
-                if(request.method === 'get') {
+                if (request.method === 'get') {
                     var payload = request.query;
                 } else {
                     var payload = request.payload;
@@ -59,30 +58,29 @@ module.exports = function(config) {
 
                 // First validate schema
                 // respond with errors
-                Joi.validate(payload, validSchema, config.validationOpts, function (err, value) {
-                    if(err) {
+                Joi.validate(payload, validSchema, config.validationOpts, function(err, value) {
+                    if (err) {
                         var error = Boom.badRequest(err);
                         return reply(error);
-                    }
-                    else {
+                    } else {
 
                         // Add our defaults
-                        var insert = Extend({},config.create.defaults, payload);
+                        var insert = Extend({}, config.create.defaults, payload);
 
                         // If config has date option, add a timestamp
-                        if(config.create.date) {
+                        if (config.create.date) {
                             var ts = new Date();
                             insert[config.create.date] = ts;
                         }
 
-                        if(config.create.bcrypt) {
+                        if (config.create.bcrypt) {
                             // Hash password before insert
                             insert[config.create.bcrypt] = Bcrypt.hashSync(insert[config.create.bcrypt], salt);
                         }
 
 
                         // Add uId if set to anything in defaults
-                        if(request.auth.isAuthenticated && config.create.defaults["uId"] !== undefined) {
+                        if (request.auth.isAuthenticated && config.create.defaults["uId"] !== undefined) {
                             insert.uId = request.auth.artifacts.id;
                         }
 
@@ -92,7 +90,7 @@ module.exports = function(config) {
                         // Perform Insert
                         collection.insert(insert, function(err, docs) {
 
-                            return reply(docs.ops[0]).type('application/json');           
+                            return reply(docs.ops[0]).type('application/json');
                         });
                     }
                 });
@@ -100,78 +98,75 @@ module.exports = function(config) {
         },
         get: function(request, reply) {
 
-            if(request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && request.auth.credentials.access !== config.read.access) {
+            if (request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && request.auth.credentials.access !== config.read.access) {
                 var error = Boom.unauthorized('You do not have read access');
                 return reply(error);
-            }
-            else {
+            } else {
                 var collection = db
-                .collection(coll)
-                .findOne({"_id": ObjectId(request.params.id)}, function(err, doc) {
+                    .collection(coll)
+                    .findOne({ "_id": ObjectId(request.params.id) }, function(err, doc) {
 
 
-                    if(doc == null) {
-                        var error = Boom.badRequest('No doc found in '+coll);
-                        return reply(error);
-                    }
-                    // access control
-                    else if(request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && doc.uId !== request.auth.artifacts.id) {
-                        var error = Boom.unauthorized('You are not permitted to see this');
-                        return reply(error);
-                    }
-                    else {
+                        if (doc == null) {
+                            var error = Boom.badRequest('No doc found in ' + coll);
+                            return reply(error);
+                        }
+                        // access control
+                        else if (request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && doc.uId !== request.auth.artifacts.id) {
+                            var error = Boom.unauthorized('You are not permitted to see this');
+                            return reply(error);
+                        } else {
 
-                        if(config.read.whitelist || config.read.blacklist) {
+                            if (config.read.whitelist || config.read.blacklist) {
 
-                            if(config.read.whitelist) {
-                                // Add whitelist fields
-                                var _doc = {};
-                                for(var i = 0; i < config.read.whitelist.length; i++) {
-                                    var key = config.read.whitelist[i];
-                                    if(doc[key] !== undefined) {
-                                        _doc[key] = doc[key];
+                                if (config.read.whitelist) {
+                                    // Add whitelist fields
+                                    var _doc = {};
+                                    for (var i = 0; i < config.read.whitelist.length; i++) {
+                                        var key = config.read.whitelist[i];
+                                        if (doc[key] !== undefined) {
+                                            _doc[key] = doc[key];
+                                        }
+                                    }
+
+                                    doc = _doc;
+                                }
+                                if (config.read.blacklist) {
+                                    // Remove blacklist fields
+                                    for (var i = 0; i < config.read.blacklist.length; i++) {
+                                        var key = config.read.blacklist[i];
+                                        delete doc[key];
                                     }
                                 }
-
-                                doc = _doc;
                             }
-                            if(config.read.blacklist) {
-                                // Remove blacklist fields
-                                for(var i = 0; i < config.read.blacklist.length; i++) {
-                                    var key = config.read.blacklist[i];
-                                    delete doc[key];
-                                }
-                            }
+                            return reply(doc).type('application/json');
                         }
-                        return reply(doc).type('application/json');
-                    }
-                });
+                    });
             }
 
 
         },
         find: function(request, reply) {
             // console.log(config.read.access)
-            if(request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && request.auth.credentials.access !== config.read.access) {
+            if (request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && request.auth.credentials.access !== config.read.access) {
                 var error = Boom.unauthorized('You do not have read access');
                 return reply(error);
-            }
-            else {
+            } else {
                 var find = {};
 
-                if(request.method === 'get') {
+                if (request.method === 'get') {
                     var payload = request.query;
                 } else {
                     var payload = request.payload;
                 }
 
                 // Add payload to find object
-                if(request.payload) {
+                if (request.payload) {
                     Extend(find, payload);
                 }
 
                 // Access Control
-                if(request.auth.isAuthenticated && request.auth.credentials.access !== 'admin') {
+                if (request.auth.isAuthenticated && request.auth.credentials.access !== 'admin') {
                     var uId = request.auth.artifacts.id;
                     find.uId = uId;
                 }
@@ -179,49 +174,49 @@ module.exports = function(config) {
 
 
                 var collection = db
-                .collection(coll)
-                .find(find)
-                .sort({ "_id" : 1})
-                .toArray(function(err, docs) {
+                    .collection(coll)
+                    .find(find)
+                    .sort({ "_id": 1 })
+                    .toArray(function(err, docs) {
 
-                    var _docs = [];
-                    if(config.read.whitelist || config.read.blacklist) {
+                        var _docs = [];
+                        if (config.read.whitelist || config.read.blacklist) {
 
-                        for(var i = 0; i < docs.length; i++) {
-                            var doc = docs[i];
+                            for (var i = 0; i < docs.length; i++) {
+                                var doc = docs[i];
 
-                            if(config.read.whitelist) {
-                                // Add whitelist fields
-                                var _doc = {}
+                                if (config.read.whitelist) {
+                                    // Add whitelist fields
+                                    var _doc = {}
 
-                                for(var j = 0; j < config.read.whitelist.length; j++) {
-                                    var key = config.read.whitelist[j];
-                                    if(doc[key] !== undefined) {
-                                        _doc[key] = doc[key];
+                                    for (var j = 0; j < config.read.whitelist.length; j++) {
+                                        var key = config.read.whitelist[j];
+                                        if (doc[key] !== undefined) {
+                                            _doc[key] = doc[key];
+                                        }
+
+
                                     }
-
-
+                                    _docs.push(_doc)
                                 }
-                                _docs.push(_doc)
-                            }
-                            if(config.read.blacklist) {
-                                // Remove blacklist fields
+                                if (config.read.blacklist) {
+                                    // Remove blacklist fields
 
-                                //console.log(config.read.blacklist.length)
-                                for(var j = 0; j < config.read.blacklist.length; j++) {
-                                    var key = config.read.blacklist[j];
+                                    //console.log(config.read.blacklist.length)
+                                    for (var j = 0; j < config.read.blacklist.length; j++) {
+                                        var key = config.read.blacklist[j];
 
-                                    delete doc[key];
+                                        delete doc[key];
+                                    }
+                                    _docs.push(doc)
                                 }
-                                _docs.push(doc)
                             }
+                            docs = _docs;
+
                         }
-                        docs = _docs;
 
-                    }
-
-                    return reply(docs).type('application/json');
-                });
+                        return reply(docs).type('application/json');
+                    });
             }
 
 
@@ -229,35 +224,33 @@ module.exports = function(config) {
         },
         update: function(request, reply) {
             // console.log(config.update.access)
-            if(request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && request.auth.credentials.access !== config.update.access) {
+            if (request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && request.auth.credentials.access !== config.update.access) {
                 var error = Boom.unauthorized('You do not have update access');
 
                 return reply(error);
-            }
-            else {
+            } else {
                 // Resource ID from URL
                 var resourceId = request.params.id;
                 var validSchema = config.update.payload;
 
-                if(request.method === 'get') {
+                if (request.method === 'get') {
                     var payload = request.query;
                 } else {
                     var payload = request.payload;
                 }
 
-                Joi.validate(payload, validSchema, config.validationOpts, function (err, value) {
-                    if(err !== null) {
+                Joi.validate(payload, validSchema, config.validationOpts, function(err, value) {
+                    if (err !== null) {
                         var error = Boom.badRequest(err);
                         return reply(error);
-                    }
-                    else {
+                    } else {
                         var update = payload;
 
-                        if(config.update.bcrypt && update[config.update.bcrypt]) {
+                        if (config.update.bcrypt && update[config.update.bcrypt]) {
                             // Hash password before update
                             update[config.update.bcrypt] = Bcrypt.hashSync(update[config.update.bcrypt], salt);
                         }
-                        if(config.update.date) {
+                        if (config.update.date) {
                             var ts = new Date();
                             update[config.update.date] = ts;
                         }
@@ -266,22 +259,21 @@ module.exports = function(config) {
                         var collection = db.collection(coll);
 
                         // Check doc exists & uId matches doc
-                        collection.findOne({"_id": ObjectId(request.params.id)}, function(err, doc) {
+                        collection.findOne({ "_id": ObjectId(request.params.id) }, function(err, doc) {
 
                             // doc exists
-                            if(doc === null) {
-                                var error = Boom.badRequest('No doc found in '+coll);
+                            if (doc === null) {
+                                var error = Boom.badRequest('No doc found in ' + coll);
                                 return reply(error);
                             }
                             // access control
-                            else if(request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && doc.uId !== request.auth.artifacts.id) {
+                            else if (request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && doc.uId !== request.auth.artifacts.id) {
                                 var error = Boom.unauthorized('You are not permitted to update this');
                                 return reply(error);
-                            }
-                            else {
-                                collection.update({"_id": ObjectId(resourceId)}, {$set: update}, {}, function(err, doc) {
+                            } else {
+                                collection.update({ "_id": ObjectId(resourceId) }, { $set: update }, {}, function(err, doc) {
 
-                                    return reply({error:null,message:'Updated successfully'});
+                                    return reply({ error: null, message: 'Updated successfully' });
                                 });
                             }
                         })
@@ -291,26 +283,24 @@ module.exports = function(config) {
 
         },
         del: function(request, reply) {
-            if(request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && request.auth.credentials.access !== config.del.access) {
+            if (request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && request.auth.credentials.access !== config.del.access) {
                 var error = Boom.unauthorized('You do not have delete access');
                 return reply(error);
             } else {
-                var _del = {"_id": ObjectId(request.params.id)};
+                var _del = { "_id": ObjectId(request.params.id) };
 
                 var collection = db.collection(coll);
-                collection.findOne({"_id": ObjectId(request.params.id)}, function(err, doc) {
-                    if(doc === null) {
-                        var error = Boom.badRequest('No doc found in '+coll);
+                collection.findOne({ "_id": ObjectId(request.params.id) }, function(err, doc) {
+                    if (doc === null) {
+                        var error = Boom.badRequest('No doc found in ' + coll);
                         return reply(error);
-                    }
-                    else if(request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && doc.uId !== request.auth.artifacts.id) {
+                    } else if (request.auth.isAuthenticated && request.auth.credentials.access !== 'admin' && doc.uId !== request.auth.artifacts.id) {
                         var error = Boom.unauthorized('You are not permitted to delete this');
                         return reply(error);
-                    }
-                    else {
-                        collection.remove( _del, function(err) {
+                    } else {
+                        collection.remove(_del, function(err) {
 
-                            return reply({error:null,message:'Deleted successfully'});
+                            return reply({ error: null, message: 'Deleted successfully' });
                         });
                     }
                 });

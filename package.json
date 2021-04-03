@@ -1,43 +1,25 @@
 {
-  "name": "toothache",
-  "version": "2.0.0",
-  "description": "Hapi plugin that removes the toothache from creating CRUD endpoints for MongoDB.",
-  "main": "index.js",
-  "scripts": {
-    "test": "make test-lcov"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/smaxwellstewart/toothache"
-  },
-  "keywords": [
-    "Hapi",
-    "Mongo",
-    "MongoDB",
-    "CRUD",
-    "RESTful",
-    "RESOURCEful",
-    "toothache"
-  ],
-  "author": "Simon Maxwell-Stewart <smaxwellstewart@gmail.com> (http://smaxwellstewart.com/)",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/smaxwellstewart/toothache/issues"
-  },
-  "homepage": "https://github.com/smaxwellstewart/toothache",
-  "dependencies": {
-    "bcryptjs": "^2.0.2",
-    "boom": "^2.5.1",
-    "extend": "^1.3.0",
-    "joi": "^4.6.2",
-    "kerberos": "0.0.17",
-    "mongodb": "^2.0.48"
-  },
-  "devDependencies": {
-    "coveralls": "^2.11.1",
-    "hapi": "^6.7.1",
-    "hapi-auth-hawk": "^1.1.1",
-    "hawk": "^2.2.3",
-    "lab": "^4.2.0"
-  }
+    "name": "toothache2",
+    "version": "2.0.1",
+    "description": "Hapi plugin",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "DigiM",
+    "license": "ISC",
+    "dependencies": {
+        "@hapi/boom": "^9.1.2",
+        "bcryptjs": "^2.4.3",
+        "extend": "^3.0.2",
+        "joi": "^17.4.0",
+        "kerberos": "^1.1.4",
+        "mongodb": "^3.6.5"
+    },
+    "devDependencies": {
+        "@hapi/hapi": "^20.1.2",
+        "@hapi/hawk": "^8.0.0",
+        "@hapi/lab": "^24.1.1",
+        "coveralls": "^3.1.0"
+    }
 }
